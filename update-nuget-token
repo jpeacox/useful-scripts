@@ -1,0 +1,42 @@
+#!/usr/bin/env zx
+import 'zx/globals';
+import { yesOrNo } from './utils.mjs';
+
+$.verbose = false;
+
+const username = await question('Username: ');
+const token = await question('Artifactory token: ');
+
+await spinner(async () => {
+  const { stdout: nugetSources } = await $`dotnet nuget list source`;
+
+  const nugetSourcesByLine = nugetSources
+    .split('\n')
+    .slice(1)
+    .filter((l) => l.length);
+  echo(`Found ${nugetSourcesByLine.length / 2} sources`);
+
+  for (let i = 0; i < nugetSourcesByLine.length; i += 2) {
+    const [_, nameAndStatus] = nugetSourcesByLine[i].split('.', 2);
+    const destination = nugetSourcesByLine[i + 1].trim();
+    const [name] = nameAndStatus.split('[').map((k) => k.trim());
+
+    if (destination.includes('https://api.nuget.org/')) {
+      continue;
+    }
+
+    try {
+      await $`dotnet nuget remove source ${name}`;
+      await $`dotnet nuget add source ${destination} -u ${username} -p ${token} -n ${name} --store-password-in-clear-text --valid-authentication-types basic`;
+      echo(`Updated token for ${destination} (${name})`);
+    } catch (err) {
+      echo(`Failed to update token for ${name}`);
+    }
+  }
+});
+
+const shouldRestore = await yesOrNo('Run dotnet restore?');
+if (shouldRestore) {
+  $.verbose = true;
+  await $`dotnet restore`;
+}

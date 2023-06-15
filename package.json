@@ -1,0 +1,11 @@
+{
+  "name": "justins-mac-scripts",
+  "version": "0.0.1",
+  "dependencies": {
+    "zx": "^7.2.2"
+  },
+  "files": [
+    "mkdirc",
+    "update-nuget-token"
+  ]
+}

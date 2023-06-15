@@ -1,0 +1,67 @@
+#!/usr/bin/env zx
+import 'zx/globals';
+import { yesOrNo } from './utils.mjs';
+
+const packageJson = await fs.readFile(
+  path.resolve(__dirname, './package.json'),
+  { encoding: 'utf-8' }
+);
+const { files } = JSON.parse(packageJson);
+
+async function addLineIfDoesNotExist(line, file) {
+  const contents = await fs.readFile(file, { encoding: 'utf-8' });
+  if (contents.split('\n').indexOf(line) === -1) {
+    await fs.appendFile(file, `\n${line}`);
+    return true;
+  }
+  return false;
+}
+
+const pathAdditionLine = `
+# Add scripts to PATH
+
+PATH="$PATH:${__dirname}"
+`;
+
+const validProfiles = ['.zshrc', '.bashrc'].map((profile) =>
+  path.join(os.homedir(), profile)
+);
+
+let didAddAny = false;
+await spinner(async () => {
+  for (const profile of validProfiles) {
+    echo(`Checking for ${profile}`);
+    if (await fs.exists(profile)) {
+      didAddAny = true;
+      echo(`Adding path to ${profile}`);
+      await addLineIfDoesNotExist(pathAdditionLine, profile);
+      break;
+    }
+  }
+});
+
+if (!didAddAny) {
+  const canAddProfile = await yesOrNo(
+    'No profile found. Would you like to add any empty one at ~/.bashrc?'
+  );
+  if (canAddProfile) {
+    await spinner(async () => {
+      await fs.writeFile(validProfiles.reverse()[0], pathAdditionLine);
+      await $`source ${profile}`;
+      echo(`Created new profile with PATH update`);
+    });
+  }
+}
+
+await spinner(async () => {
+  echo('Updating file permissions');
+  await $`sudo echo`;
+  for (const file of files) {
+    await $`sudo chmod 777 ${file}`;
+    await $`sudo chown 777 ${file}`;
+  }
+});
+
+echo(
+  'Setup completed. If your profile was updated, run "source ~/.bashrc" or whichever profile was found.'
+);

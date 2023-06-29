@@ -8,3 +8,11 @@
 ## `update-nuget-token`
 
 Updates nuget sources with a single unifying credential
+
+## `format-sql`
+
+Formats your SQL file to work with transaction based operations; useful for our DBA process.
+
+`format-sql`: Formats the file you supply in question
+`format-sql ./my-sql-file.sql` Formats the supplied argument
+

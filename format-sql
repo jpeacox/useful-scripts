@@ -23,11 +23,13 @@ PRINT '***********************'
 END CATCH
 `;
 
+const pwd = $.cwd || (await $`pwd`).stdout.replace('\n', '') || __dirname;
+
 const sqlFilename =
   argv._[1] || (await question('SQL script location (relative or absolute): '));
 const absSqlFilename = path.isAbsolute(sqlFilename)
   ? sqlFilename
-  : path.resolve((await $`echo $PWD`).stdout.replace('\n', ''), sqlFilename);
+  : path.resolve(pwd, sqlFilename);
 
 if (!fs.existsSync(absSqlFilename)) {
   throw `File not found: ${absSqlFilename}`;

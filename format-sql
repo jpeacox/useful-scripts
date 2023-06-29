@@ -1,0 +1,55 @@
+#!/usr/bin/env zx
+import 'zx/globals';
+import { yesOrNo } from './utils.mjs';
+
+$.verbose = false;
+
+const sqlTemplate = `BEGIN TRY
+BEGIN TRANSACTION
+
+{{sql}}
+
+END TRY
+
+BEGIN CATCH
+
+ROLLBACK TRANSACTION
+DECLARE @ErrorMessage NVARCHAR(4000), @ErrorSeverity INT, @ErrorState INT;
+SELECT @ErrorMessage = ERROR_MESSAGE(), @ErrorSeverity = ERROR_SEVERITY(), @ErrorState = ERROR_STATE();
+RAISERROR (@ErrorMessage, @ErrorSeverity, @ErrorState);
+PRINT 'Transaction Rolled Back'
+PRINT '***********************'
+
+END CATCH
+`;
+
+const sqlFilename =
+  argv._[1] || (await question('SQL script location (relative or absolute): '));
+const absSqlFilename = path.isAbsolute(sqlFilename)
+  ? sqlFilename
+  : path.resolve((await $`echo $PWD`).stdout.replace('\n', ''), sqlFilename);
+
+if (!fs.existsSync(absSqlFilename)) {
+  throw `File not found: ${absSqlFilename}`;
+}
+
+const shouldUpdateFile = await yesOrNo(
+  'Do you want to update the file? This will overwrite the previous contents.'
+);
+
+await spinner(async () => {
+  const scriptContents = await fs.readFile(absSqlFilename, {
+    encoding: 'utf-8',
+  });
+  if (scriptContents.includes("PRINT 'Transaction Rolled Back'")) {
+    throw 'The SQL script already has a transaction applied. No changes will be made.';
+  }
+  const formatted = sqlTemplate.replace('{{sql}}', scriptContents);
+  if (shouldUpdateFile) {
+    await fs.writeFile(absSqlFilename, formatted);
+  } else {
+    const newFilename = absSqlFilename.replace(/\.sql$/i, 'formatted.sql');
+    await fs.writeFile(newFilename, formatted);
+  }
+  echo(formatted);
+});

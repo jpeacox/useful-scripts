@@ -6,6 +6,7 @@
   },
   "files": [
     "mkdirc",
-    "update-nuget-token"
+    "update-nuget-token",
+    "format-sql"
   ]
 }
